@@ -195,6 +195,41 @@
 - `--More--` là đang phân trang. Nhấn `q` để thoát, `Space` để xem tiếp.
 - `Password Used | false`: Arch mặc định tin mọi kết nối từ chính máy này (chế độ `trust`). Học thì không sao, nhưng server thật thì phải cấu hình lại.
 
+## SQL
+
+### Bảng
+- Database chứa dữ liệu trong **bảng**. Mỗi **cột** có kiểu dữ liệu cố định, mỗi **dòng** là một bản ghi.
+- Bảng `notes` tương ứng với model `Note` trong `app.py`.
+```sql
+CREATE TABLE notes (
+    id SERIAL PRIMARY KEY,
+    title TEXT NOT NULL,
+    content TEXT NOT NULL
+);
+```
+- `TEXT`: chuỗi, giống `str`.
+- `NOT NULL`: bắt buộc có giá trị, giống field bắt buộc trong Pydantic.
+- `SERIAL`: số nguyên tự tăng. Nó tạo bộ đếm `notes_id_seq` và đặt mặc định cho cột là `nextval(...)`, thay cho `next_id += 1`.
+- `PRIMARY KEY`: mỗi dòng một giá trị khác nhau, không trùng. Nhờ nó mà tìm được đúng một dòng.
+- `\d notes`: xem cấu trúc bảng.
+
+### INSERT (giống POST)
+```sql
+INSERT INTO notes (title, content) VALUES ('Học SQL', 'Bài 1');
+```
+- Giá trị theo đúng thứ tự các cột đã liệt kê. Không ghi `id` vì `nextval` tự điền.
+- Chuỗi dùng **nháy đơn** `'...'`.
+- Thiếu cột `NOT NULL` thì bị từ chối **cả dòng**: `ERROR: null value in column "content" ... violates not-null constraint`. `DETAIL` cho thấy dòng bị từ chối.
+- Cùng một quy tắc được kiểm tra ở 2 tầng: Pydantic (trả 422) và PostgreSQL (`NOT NULL`). Hai lớp bảo vệ.
+
+### Id bị nhảy số
+- `nextval` được gọi **trước** khi kiểm tra quy tắc. Câu `INSERT` lỗi vẫn tiêu mất một số, và bộ đếm không bao giờ trả lại số.
+- Vì vậy id có lỗ hổng (1, 2, 4...) là bình thường. Xóa dòng cũng không lấp lại số.
+- Giống bốc số thứ tự ở ngân hàng: bị trả về thì số đó bỏ, người sau nhận số tiếp theo.
+
+### SELECT (giống GET)
+- `SELECT * FROM notes;`: lấy tất cả các cột, tất cả các dòng.
+
 ## Tự kiểm tra
 Trả lời bằng lời của bạn, không nhìn phần ghi chú ở trên:
 1. Tại sao cần venv?
