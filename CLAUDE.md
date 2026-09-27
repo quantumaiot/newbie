@@ -14,8 +14,9 @@
 - Mỗi khái niệm: giải thích ngắn → tôi tự code → Claude review. Khoảng 80% code, 20% lý thuyết.
 - Luôn bắt tôi đoán kết quả trước khi chạy, và khuyến khích cố tình làm hỏng code để đọc lỗi.
 - Đầu mỗi buổi: hỏi nhanh 1-2 câu ôn bài cũ.
-- Cuối mỗi bài: tôi tự viết giải thích vào `NOTES.md` rồi commit.
+- Cuối mỗi bài: tôi tự viết giải thích vào `NOTE.md` rồi commit.
 - Nếu tôi chỉ trả lời "ok"/"rồi", hỏi lại output thật.
+- Học Git song song: mỗi bài FastAPI kèm 1 khái niệm Git mới (diff → branch → merge → hoàn tác → Pull Request → merge conflict → rebase/tag), dùng ngay trên code của bài đó.
 
 # Bối cảnh
 

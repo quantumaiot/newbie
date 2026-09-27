@@ -9,3 +9,7 @@ def home():
 @app.get("/about")
 def about():
     return {"name": "Dung", "learning": "FastAPI"}
+
+@app.get("/notes/{note_id}")
+def get_note(note_id: int):
+    return {"note_id": note_id, "type": str(type(note_id))}
