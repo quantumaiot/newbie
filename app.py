@@ -16,7 +16,7 @@ next_id = 1
 
 @app.get("/")
 def home():
-    return {"message": "hello coco"}
+    return {"message": "hello"}
 
 @app.get("/about")
 def about():
