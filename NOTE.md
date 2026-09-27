@@ -35,6 +35,36 @@
 - `git diff --staged`: xem thay đổi đã add nhưng chưa commit.
 - Có staging để **chọn** thay đổi nào vào commit. Nhờ vậy mỗi commit làm đúng một việc.
 
+### git status và git log
+- `git status`: **bây giờ** đang có gì chưa commit. Nhìn khu vực [1] và [2].
+- `git log`: **lịch sử** các commit đã làm. Nhìn khu vực [3].
+- Commit xong thì thay đổi biến khỏi `status` và xuất hiện trong `log`.
+- `git status --short`: cột trái là staging, cột phải là working directory.
+  - `M  file`: đã add
+  - ` M file`: đã sửa, chưa add
+  - `?? file`: file mới, Git chưa theo dõi
+- Prompt terminal: `+` là có thay đổi trong staging, `!` là có thay đổi chưa add, `?` là có file mới chưa theo dõi.
+
+### Branch và merge
+- Branch là **một cái nhãn trỏ vào một commit**. Commit mới thì nhãn tự dịch lên.
+- `main` giữ code ổn định. Tính năng mới làm trên nhánh riêng, xong mới gộp vào.
+- `git switch -c <tên>`: tạo nhánh mới rồi chuyển sang. `git switch <tên>`: chuyển nhánh.
+- Switch nhánh thì Git thay nội dung file bằng bản chụp của nhánh đó. Code không mất, nó nằm ở nhánh kia.
+- Chỉ switch khi `git status` sạch.
+- Nhánh mới push lần đầu cũng cần `-u`: `git push -u origin <tên>`
+- `git merge <nhánh>`: gộp nhánh đó vào nhánh đang đứng. **Fast-forward** là khi `main` không có commit mới, Git chỉ cần dời nhãn `main` lên.
+- Merge xong nhớ push cả `main`. `ahead 1` trong `git branch -vv` là còn 1 commit chưa push.
+- `git branch -d`: xóa nhánh đã merge. `-D`: xóa nhánh chưa merge (bắt buộc xác nhận).
+- Lỗi `src refspec ... does not match any`: tên nhánh gõ sai. Dùng `Tab` để tự điền.
+
+### Hoàn tác
+- Sửa file `a` rồi `git restore a` thì **mất hết** thay đổi, file quay về bản đã lưu trong Git. Không giống Ctrl+Z: nó bỏ tất cả một lần, và không hoàn tác được.
+- Đã `git add a` rồi `git restore --staged a` thì **hủy add**, thay đổi vẫn còn nguyên trong file.
+- Đã add rồi thì `git restore a` không có tác dụng, vì file và staging đang giống nhau. Muốn bỏ hẳn thì `--staged` trước, `restore` sau.
+- `git reset --soft HEAD~1`: hủy commit vừa tạo, thay đổi quay về staging. Là chiều ngược lại của `git commit`. **Chỉ dùng khi commit chưa push.**
+- `HEAD` là commit đang đứng, `HEAD~1` là commit ngay trước nó.
+- Không dùng `git restore .` khi chưa chắc chắn, vì nó áp dụng cho mọi file.
+
 ### .gitignore
 - Danh sách những thứ không bao giờ đưa vào Git.
 - Vẫn cần có dù venv tự ẩn, vì còn `.env`, `__pycache__/`, `*.pyc`, và vì quy tắc phải đi theo project, không phụ thuộc vào máy của ai.
@@ -85,7 +115,29 @@
 - `/notes/{note_id}`: phần `{note_id}` thay đổi được.
 - `note_id: int` là type hint. Python thường không kiểm tra type hint, nhưng FastAPI thì có.
 - JSON chỉ chứa được số, chuỗi, list, dict, true/false, null. Vì vậy `type(x)` phải bọc trong `str()`.
-- Kết quả thí nghiệm `/notes/abc` và khi bỏ `: int`: *(tự điền)*
+- Kết quả thí nghiệm `/notes/abc` và khi bỏ `: int`: *(chưa làm)*
+
+### Bài 3: POST và Pydantic
+- **GET** để lấy dữ liệu, thông tin nằm trên URL. **POST** để tạo mới, dữ liệu nằm trong **body** dạng JSON.
+- `class NoteCreate(BaseModel)` mô tả hình dạng dữ liệu bằng type hint. `NoteCreate` **kế thừa** `BaseModel` nên có sẵn khả năng kiểm tra dữ liệu.
+- Body gửi lên sai hình dạng (thiếu field, sai kiểu) thì FastAPI tự trả **422**.
+- Lưu note trong list thì restart server là mất, vì list nằm trong RAM. Cần database để lưu xuống ổ đĩa.
+- Test POST ở `/docs`: "Try it out", sửa body, "Execute".
+
+### Bài 4: id, 404, xóa
+- `class Note(NoteCreate)` thêm `id`. Tách 2 class vì người dùng không được tự đặt id: gửi lên `NoteCreate`, server trả về `Note`.
+- `status_code=201`: mã chuẩn khi tạo mới thành công.
+- `Note(id=next_id, **payload.model_dump())`: `model_dump()` đổi object thành dict, rồi `**` mở dict ra thành tham số có tên.
+- `global next_id`: bắt buộc có thì mới gán lại được biến nằm ngoài hàm.
+- `raise HTTPException(status_code=404, detail=...)`: dừng hàm và trả lỗi 404.
+- **Bug đã gặp:** thiếu `return` sau `notes.remove(note)` nên hàm chạy tiếp tới `raise`. Note bị xóa thật nhưng client lại nhận 404. `return` làm hàm thoát ngay.
+
+### Kiểu trả về `->`
+- `-> Note` khai báo hàm trả về gì. Nó không sửa bug, chỉ mô tả. `-> None` nghĩa là không trả về gì.
+- Python không bắt buộc có `->`. Nhưng với route FastAPI thì **luôn ghi**, vì FastAPI dùng nó để:
+  1. Hiện hình dạng response trên `/docs`
+  2. Kiểm tra dữ liệu trả về
+  3. **Lọc bỏ field thừa**. Ví dụ `-> UserPublic` thì không bao giờ lộ `password_hash`.
 
 ## Tự kiểm tra
 Trả lời bằng lời của bạn, không nhìn phần ghi chú ở trên:
@@ -94,3 +146,7 @@ Trả lời bằng lời của bạn, không nhìn phần ghi chú ở trên:
 3. Sau khi gắn `@log_call`, `greet.__name__` ra gì? Vì sao? `@wraps` sửa điều đó bằng cách nào?
 4. `show(1, x=2)` thì `args` và `kwargs` là gì?
 5. `@app.get("/")` làm gì lúc khởi động app, và làm gì lúc có request tới?
+6. `git status` và `git log` khác nhau ở đâu?
+7. Đã add file rồi, muốn bỏ hẳn thay đổi thì làm mấy bước, lệnh gì?
+8. Vì sao `delete_note` trả về 404 dù đã xóa note, khi thiếu `return`?
+
