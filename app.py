@@ -27,14 +27,14 @@ def get_notes():
     return notes
 
 @app.get("/notes/{note_id}")
-def get_note(note_id: int) -> Note:
+def get_note(note_id: int):
     for note in notes:
         if note.id == note_id:
             return note
     raise HTTPException(status_code=404, detail="Note not found")
 
 @app.post("/notes", status_code=201)
-def create_note(payload: NoteCreate) -> None:
+def create_note(payload: NoteCreate) -> Note:
     global next_id
     note = Note(id=next_id, **payload.model_dump())
     notes.append(note)
@@ -42,8 +42,9 @@ def create_note(payload: NoteCreate) -> None:
     return note
 
 @app.delete("/notes/{note_id}")
-def delete_note(note_id: int):
+def delete_note(note_id: int) -> dict:
     for note in notes:
         if note.id == note_id:
             notes.remove(note)
+            return {"deleted": note_id}
     raise HTTPException(status_code=404, detail="Note not found")
