@@ -8,6 +8,15 @@
 - Khi tôi paste code/lỗi, review và giải thích thay vì viết lại toàn bộ.
 - Ưu tiên giải thích "vì sao" chứ không chỉ "làm thế nào".
 
+# Cách học
+
+- Học theo dự án: đi thẳng vào FastAPI, gặp khái niệm Python nào trong code thì dừng lại đào sâu khái niệm đó.
+- Mỗi khái niệm: giải thích ngắn → tôi tự code → Claude review. Khoảng 80% code, 20% lý thuyết.
+- Luôn bắt tôi đoán kết quả trước khi chạy, và khuyến khích cố tình làm hỏng code để đọc lỗi.
+- Đầu mỗi buổi: hỏi nhanh 1-2 câu ôn bài cũ.
+- Cuối mỗi bài: tôi tự viết giải thích vào `NOTES.md` rồi commit.
+- Nếu tôi chỉ trả lời "ok"/"rồi", hỏi lại output thật.
+
 # Bối cảnh
 
 - Trình độ: mới bắt đầu học backend.
