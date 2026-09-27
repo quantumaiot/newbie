@@ -229,6 +229,35 @@ INSERT INTO notes (title, content) VALUES ('Học SQL', 'Bài 1');
 
 ### SELECT (giống GET)
 - `SELECT * FROM notes;`: lấy tất cả các cột, tất cả các dòng.
+- `SELECT * FROM notes WHERE id = 4;`: chỉ lấy những dòng thỏa điều kiện. Thay cho vòng `for` + `if` trong Python.
+- SQL so sánh bằng **một dấu `=`**, không phải `==`.
+- Bạn nói *muốn gì*, database tự lo *tìm thế nào*. Có `PRIMARY KEY` thì tìm theo id rất nhanh, kể cả khi có hàng triệu dòng.
+- Không có dòng nào khớp thì trả về `(0 rows)`: **không phải lỗi**, là một câu trả lời hợp lệ.
+- **Phân chia trách nhiệm:** database trả lời "có 0 dòng", còn code Python quyết định điều đó nghĩa là 404. Database không biết gì về HTTP.
+
+### UPDATE (sửa)
+```sql
+UPDATE notes SET content = 'Bai 3 da sua' WHERE id = 4;
+```
+- ⚠️ **Quên `WHERE` là sửa TẤT CẢ các dòng**, không hỏi lại, không có Ctrl+Z.
+- Thói quen an toàn: chạy `SELECT` với cùng `WHERE` trước để xem những dòng nào sẽ bị ảnh hưởng.
+- psql in ra `UPDATE n`, với `n` là số dòng đã bị sửa (gọi là **rowcount**). `UPDATE 0` là không có dòng nào khớp. Code Python dùng số này để trả 404.
+
+### DELETE (xóa)
+```sql
+DELETE FROM notes WHERE id = 2;
+```
+- ⚠️ `DELETE FROM notes;` mà quên `WHERE` là **xóa sạch cả bảng**. Luôn `SELECT` trước.
+- Xóa dòng không tồn tại thì ra `DELETE 0`, không phải lỗi.
+- `nextval` **không nhìn id lớn nhất trong bảng**, nó chỉ nhìn bộ đếm của chính nó. Xóa dòng có id lớn nhất thì note mới vẫn nhận số tiếp theo của bộ đếm.
+
+### Tổng kết CRUD
+| Việc | HTTP (FastAPI) | SQL |
+|---|---|---|
+| **C**reate: tạo | `POST /notes` | `INSERT` |
+| **R**ead: đọc | `GET /notes/{id}` | `SELECT ... WHERE` |
+| **U**pdate: sửa | *(chưa có)* | `UPDATE ... WHERE` |
+| **D**elete: xóa | `DELETE /notes/{id}` | `DELETE ... WHERE` |
 
 ## Tự kiểm tra
 Trả lời bằng lời của bạn, không nhìn phần ghi chú ở trên:
