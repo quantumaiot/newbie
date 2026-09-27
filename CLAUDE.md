@@ -24,6 +24,8 @@
 - Trình độ: mới bắt đầu học backend.
 - Stack: Python, FastAPI, PostgreSQL, Docker, DevOps cơ bản, sau đó AI/LLM integration và Flutter (mobile).
 - Mục tiêu: hiểu sâu nhưng vẫn đủ nhanh để làm được sản phẩm thật (không học lý thuyết suông).
+- Máy: Arch Linux. Editor của Git là `nano`.
+- PostgreSQL 18 cài trực tiếp trên máy (không qua Docker), port 5432. User `noteuser` (không có chữ s), database `notesdb`.
 
 # Roadmap
 

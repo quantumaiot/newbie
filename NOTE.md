@@ -161,6 +161,40 @@
   2. Kiểm tra dữ liệu trả về
   3. **Lọc bỏ field thừa**. Ví dụ `-> UserPublic` thì không bao giờ lộ `password_hash`.
 
+## PostgreSQL
+
+### Vì sao cần database
+- List trong Python nằm trong RAM, tắt chương trình là mất. Database lưu xuống ổ đĩa.
+
+### Service và log
+- PostgreSQL là một **server**: chạy nền liên tục, chờ kết nối. Trên Arch, nó được `systemd` quản lý.
+- `sudo systemctl restart postgresql`: khởi động lại. `systemctl status postgresql --no-pager`: xem trạng thái.
+- Service lỗi thì **đọc log trước, đừng đoán**: `journalctl -u postgresql -n 20 --no-pager`
+- Mẹo đọc log: tìm dòng `FATAL` hoặc `ERROR`, rồi đọc các dòng ngay phía trên nó để biết nguyên nhân.
+
+### Port
+- Port là số giúp phân biệt các chương trình mạng trên cùng một máy, giống số phòng. uvicorn dùng 8000, PostgreSQL dùng 5432.
+- Mỗi port chỉ một chương trình được dùng tại một thời điểm. Lỗi `Address already in use` là port đã bị chiếm.
+- Xem ai đang chiếm port: `sudo ss -ltnp | grep 5432`
+- **Lỗi đã gặp:** PostgreSQL không chạy được vì một container Docker cũ (`docker-postgres-1` của dự án anphat) đã chiếm port 5432. Đã xóa container đó.
+- `docker ps`: xem các container đang chạy. Trước khi xóa container phải biết nó thuộc dự án nào, vì volume có thể chứa dữ liệu thật.
+
+### User và database
+- PostgreSQL có hệ thống user riêng, tách biệt với user Linux. User quản trị mặc định là `postgres`.
+- Mỗi project nên có user riêng, chỉ có quyền trên database của nó. Không dùng `postgres` cho app.
+- Project này dùng: user **`noteuser`**, database **`notesdb`**.
+- Vào bằng quyền quản trị: `sudo -iu postgres psql`
+- Vào bằng user của project: `psql -h localhost -U noteuser -d notesdb`
+- `CREATE DATABASE ... OWNER noteuser`: cho user làm chủ, để được phép tạo bảng.
+- Database có sẵn: `postgres` (mặc định), `template0`, `template1` (khuôn mẫu, không đụng vào).
+
+### psql
+- Câu SQL phải kết thúc bằng `;`. Quên `;` thì dấu nhắc đổi thành `-#` và chờ gõ tiếp.
+- Lệnh bắt đầu bằng `\` là lệnh của psql, không cần `;`: `\l` (liệt kê database), `\conninfo` (đang kết nối thế nào), `\q` (thoát).
+- `=#` là superuser, `=>` là user thường.
+- `--More--` là đang phân trang. Nhấn `q` để thoát, `Space` để xem tiếp.
+- `Password Used | false`: Arch mặc định tin mọi kết nối từ chính máy này (chế độ `trust`). Học thì không sao, nhưng server thật thì phải cấu hình lại.
+
 ## Tự kiểm tra
 Trả lời bằng lời của bạn, không nhìn phần ghi chú ở trên:
 1. Tại sao cần venv?
