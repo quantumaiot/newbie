@@ -64,6 +64,28 @@
 - `git reset --soft HEAD~1`: hủy commit vừa tạo, thay đổi quay về staging. Là chiều ngược lại của `git commit`. **Chỉ dùng khi commit chưa push.**
 - `HEAD` là commit đang đứng, `HEAD~1` là commit ngay trước nó.
 - Không dùng `git restore .` khi chưa chắc chắn, vì nó áp dụng cho mọi file.
+- `git revert HEAD`: hủy commit **đã push** bằng cách tạo **commit mới làm ngược lại**. Commit cũ vẫn còn trong log, lịch sử chỉ thêm vào.
+- Commit đã push thì không dùng `reset`, vì `reset` viết lại lịch sử. Người khác đã kéo commit đó về sẽ bị lệch, và muốn push thì phải ép (force push), dễ làm mất code của người khác.
+
+- Ví dụ sổ chi tiêu: ghi nhầm "chi 100k". `reset` là xé trang, `revert` là viết thêm dòng "hoàn lại 100k". Sổ dùng chung (đã push) thì chỉ viết thêm, không xé.
+- `git show <commit>`: xem chính xác commit đó đã thay đổi gì. Commit revert có các dòng `-`/`+` ngược hẳn với commit gốc.
+
+| Tình huống | Lệnh |
+|---|---|
+| Sửa file, chưa add | `git restore <file>` |
+| Đã add, chưa commit | `git restore --staged <file>` |
+| Đã commit, chưa push | `git reset --soft HEAD~1` |
+| Đã commit, đã push | `git revert <commit>` |
+
+### Staging là bản chụp
+- `git add` chụp file **tại thời điểm đó**. Sửa tiếp sau khi add thì phần sửa mới chưa nằm trong staging.
+- `MM file` trong `git status --short`: đã add một bản, rồi lại sửa tiếp. Phải `add` lại trước khi commit.
+
+### Editor của Git
+- Git mở editor để viết commit message (khi `git commit` không có `-m`, hoặc khi `git revert`).
+- Mặc định là `vi`. Arch không còn cung cấp `vi`, nên revert bị dở dang: thay đổi đã vào staging nhưng chưa có commit.
+- Sửa bằng cách chọn editor khác: `git config --global core.editor nano`
+- Trong nano: `Ctrl+O`, `Enter` để lưu, `Ctrl+X` để thoát.
 
 ### .gitignore
 - Danh sách những thứ không bao giờ đưa vào Git.
