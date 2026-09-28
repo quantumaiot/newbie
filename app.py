@@ -14,6 +14,10 @@ class NoteCreate(BaseModel):
 class Note(NoteCreate):
     id: int
 
+@app.get("/")
+def home():
+    return {"message": "hello from branch"}
+
 @app.get("/notes")
 def get_notes() -> list[Note]:
     with psycopg.connect(DB_URL, row_factory=dict_row) as conn:
@@ -35,6 +39,17 @@ def create_note(payload: NoteCreate) -> Note:
             "INSERT INTO notes (title, content) VALUES (%s, %s) RETURNING *", 
             (payload.title, payload.content),
             ).fetchone()
+    return note
+
+@app.put("/notes/{note_id}")
+def update_note(note_id: int, payload: NoteCreate) -> Note:
+    with psycopg.connect(DB_URL, row_factory=dict_row) as conn:
+        note = conn.execute(
+            "UPDATE notes SET (title, content) = (%s, %s) WHERE id = %s RETURNING *",
+            (payload.title, payload.content, note_id),
+            ).fetchone()
+    if note is None:
+        raise HTTPException(status_code=404, detail="Note not found")
     return note
 
 @app.delete("/notes/{note_id}")
