@@ -301,6 +301,27 @@ with psycopg.connect("postgresql://noteuser@localhost:5432/notesdb", row_factory
 - Quy tắc: **không bao giờ** dùng f-string hay `+` để ghép dữ liệu người dùng vào SQL. Luôn dùng `%s`.
 - `(note_id,)`: cần dấu phẩy thì Python mới hiểu đó là tuple.
 
+### FastAPI + PostgreSQL
+- Mỗi request: mở kết nối, chạy SQL, đóng lại (`with psycopg.connect(DB_URL, row_factory=dict_row) as conn:`).
+- Route trả về dict từ database, còn `-> Note` / `-> list[Note]` khiến FastAPI **chuyển dict thành `Note`** (kiểm tra và lọc). Bằng chứng: thứ tự key đổi thành `title, content, id` theo đúng class.
+- Không có `->` thì dữ liệu thô đi thẳng ra ngoài, không được kiểm tra.
+- `INSERT ... RETURNING *`: thêm xong trả lại luôn dòng vừa tạo, kèm id do `nextval` cấp. Không cần `global next_id`.
+- Nhiều `%s` được điền lần lượt theo thứ tự trong tuple: `(payload.title, payload.content)`.
+- `DELETE`: đọc `.rowcount`. Bằng 0 thì `raise HTTPException(404)`.
+
+### Transaction
+- PostgreSQL giữ thay đổi trong một **transaction**, chỉ lưu vĩnh viễn khi **commit**.
+- Khối `with psycopg.connect(...)` tự **commit** nếu chạy hết không lỗi, tự **rollback** (hủy) nếu có lỗi giữa chừng.
+- **Đã thấy tận mắt:** `DELETE` chạy xong nhưng lỗi `.rowcount()` xảy ra ngay sau, vẫn trong `with`, nên note **không bị xóa**.
+- Không dùng `with` thì phải tự gọi `conn.commit()`. Quên gọi là thay đổi biến mất âm thầm.
+- Giống staging trong Git: giữ tạm, commit mới lưu.
+
+### Lỗi đã gặp
+- `return Note` thay vì `return note`: trả về **class** (cái khuôn) thay vì **biến** (dữ liệu). Python phân biệt hoa thường. Quy ước: class viết hoa chữ đầu, biến viết thường.
+- `.rowcount()`: `rowcount` là **thuộc tính**, không có `()`. **Hàm** (`.fetchone()`) mới gọi bằng `()`. Lỗi: `TypeError: 'int' object is not callable`.
+- `HTTPException(...)` thiếu `raise`: chỉ tạo object rồi vứt đi, hàm chạy tiếp và trả 200. Phải `raise` thì mới ném lỗi ra.
+- **Shadowing:** đặt biến cục bộ trùng tên biến ngoài hàm (`notes`) thì biến ngoài bị che. Không sai nhưng dễ nhầm, nên đặt tên khác.
+
 ## Tự kiểm tra
 Trả lời bằng lời của bạn, không nhìn phần ghi chú ở trên:
 1. Tại sao cần venv?
