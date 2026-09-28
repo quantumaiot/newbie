@@ -259,6 +259,69 @@ DELETE FROM notes WHERE id = 2;
 | **U**pdate: sửa | *(chưa có)* | `UPDATE ... WHERE` |
 | **D**elete: xóa | `DELETE /notes/{id}` | `DELETE ... WHERE` |
 
+## Python nói chuyện với PostgreSQL
+
+### Driver: psycopg
+- Python không tự biết nói chuyện với PostgreSQL. **Driver** là người phiên dịch: gửi câu SQL đi, rồi đổi kết quả thành dữ liệu Python.
+- Cài: `pip install "psycopg[binary]"`. `[binary]` là bản biên dịch sẵn, kéo theo gói `psycopg-binary`.
+- `pip freeze` sắp tên gói theo chữ cái, nên gói mới có thể nằm giữa `requirements.txt`.
+
+### Venv: tạo khác bật
+- **Tạo** (`python -m venv .venv`): một lần duy nhất cho mỗi project.
+- **Bật** (`source .venv/bin/activate`): mỗi lần mở terminal mới.
+- Quên thì chỉ **bật** lại, đừng tạo thêm, không lại ra `.venv-1`.
+
+### Connection string
+```
+postgresql://noteuser@localhost:5432/notesdb
+   loại       user      máy     port    db
+```
+- Cùng thông tin với `psql -h localhost -U noteuser -d notesdb`, viết gọn trong một dòng.
+
+### Kết nối và truy vấn
+```python
+import psycopg
+from psycopg.rows import dict_row
+
+with psycopg.connect("postgresql://noteuser@localhost:5432/notesdb", row_factory=dict_row) as conn:
+    rows = conn.execute("SELECT * FROM notes").fetchall()
+    note = conn.execute("SELECT * FROM notes WHERE id = %s", (4,)).fetchone()
+```
+- `with ... as conn`: **context manager**, tự đóng kết nối khi xong, kể cả khi bị lỗi giữa chừng.
+- Mặc định mỗi dòng là một **tuple** `(1, 'Hoc SQL', 'Bai 1')`: có giá trị nhưng không có tên cột, dễ đọc nhầm cột.
+- `row_factory=dict_row`: mỗi dòng là một **dict**, dùng tên cột làm key.
+- `.fetchall()`: list tất cả các dòng. `.fetchone()`: một dòng, hoặc **`None`** nếu không có.
+- `rows[0]["title"]`: `[0]` chọn phần tử trong list (đếm từ 0), `["title"]` chọn key trong dict. Mỗi lớp dữ liệu một cặp ngoặc vuông.
+- `rows[0]` là dòng **đứng đầu** kết quả, không phải dòng có id 1. Muốn tìm theo id thì để database lọc bằng `WHERE`.
+- `None` từ `.fetchone()` là lúc code Python trả 404.
+
+### ⚠️ SQL injection
+- **SAI:** `conn.execute(f"SELECT * FROM notes WHERE id = {note_id}")`. Người dùng gửi `1; DELETE FROM notes` là bảng bị xóa sạch, vì chuỗi của họ bị ghép vào và chạy như lệnh.
+- **ĐÚNG:** `conn.execute("SELECT * FROM notes WHERE id = %s", (note_id,))`. Câu SQL và giá trị được gửi **riêng**, nên giá trị luôn chỉ là dữ liệu, không bao giờ bị chạy.
+- Quy tắc: **không bao giờ** dùng f-string hay `+` để ghép dữ liệu người dùng vào SQL. Luôn dùng `%s`.
+- `(note_id,)`: cần dấu phẩy thì Python mới hiểu đó là tuple.
+
+### FastAPI + PostgreSQL
+- Mỗi request: mở kết nối, chạy SQL, đóng lại (`with psycopg.connect(DB_URL, row_factory=dict_row) as conn:`).
+- Route trả về dict từ database, còn `-> Note` / `-> list[Note]` khiến FastAPI **chuyển dict thành `Note`** (kiểm tra và lọc). Bằng chứng: thứ tự key đổi thành `title, content, id` theo đúng class.
+- Không có `->` thì dữ liệu thô đi thẳng ra ngoài, không được kiểm tra.
+- `INSERT ... RETURNING *`: thêm xong trả lại luôn dòng vừa tạo, kèm id do `nextval` cấp. Không cần `global next_id`.
+- Nhiều `%s` được điền lần lượt theo thứ tự trong tuple: `(payload.title, payload.content)`.
+- `DELETE`: đọc `.rowcount`. Bằng 0 thì `raise HTTPException(404)`.
+
+### Transaction
+- PostgreSQL giữ thay đổi trong một **transaction**, chỉ lưu vĩnh viễn khi **commit**.
+- Khối `with psycopg.connect(...)` tự **commit** nếu chạy hết không lỗi, tự **rollback** (hủy) nếu có lỗi giữa chừng.
+- **Đã thấy tận mắt:** `DELETE` chạy xong nhưng lỗi `.rowcount()` xảy ra ngay sau, vẫn trong `with`, nên note **không bị xóa**.
+- Không dùng `with` thì phải tự gọi `conn.commit()`. Quên gọi là thay đổi biến mất âm thầm.
+- Giống staging trong Git: giữ tạm, commit mới lưu.
+
+### Lỗi đã gặp
+- `return Note` thay vì `return note`: trả về **class** (cái khuôn) thay vì **biến** (dữ liệu). Python phân biệt hoa thường. Quy ước: class viết hoa chữ đầu, biến viết thường.
+- `.rowcount()`: `rowcount` là **thuộc tính**, không có `()`. **Hàm** (`.fetchone()`) mới gọi bằng `()`. Lỗi: `TypeError: 'int' object is not callable`.
+- `HTTPException(...)` thiếu `raise`: chỉ tạo object rồi vứt đi, hàm chạy tiếp và trả 200. Phải `raise` thì mới ném lỗi ra.
+- **Shadowing:** đặt biến cục bộ trùng tên biến ngoài hàm (`notes`) thì biến ngoài bị che. Không sai nhưng dễ nhầm, nên đặt tên khác.
+
 ## Tự kiểm tra
 Trả lời bằng lời của bạn, không nhìn phần ghi chú ở trên:
 1. Tại sao cần venv?
