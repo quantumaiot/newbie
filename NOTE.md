@@ -57,6 +57,33 @@
 - `git branch -d`: xóa nhánh đã merge. `-D`: xóa nhánh chưa merge (bắt buộc xác nhận).
 - Lỗi `src refspec ... does not match any`: tên nhánh gõ sai. Dùng `Tab` để tự điền.
 
+### Pull Request và git pull
+- **Pull Request (PR):** lời đề nghị gộp một nhánh vào `main` trên GitHub. Là nơi để review code, bình luận từng dòng, và chạy kiểm tra tự động trước khi gộp.
+- Khi đi làm, hầu như không ai `git merge` thẳng vào `main` trên máy. Luôn đi qua PR.
+- Mở PR: nút "Compare & pull request", kiểm tra `base: main` ← `compare: <nhánh>`, viết tiêu đề và mô tả.
+- Tab "Files changed": tự review như đang đọc code của người khác. Bấm `+` cạnh một dòng để bình luận.
+- Merge trên GitHub mặc định tạo **merge commit** (có 2 cha), khác với fast-forward (chỉ dời nhãn).
+- `git pull`: **kéo** commit từ GitHub về máy, chiều ngược lại của `git push`. Merge trên GitHub rồi thì phải `pull` thì `main` trên máy mới có code mới.
+- GitHub xóa nhánh của nó rồi thì nhánh trên máy vẫn còn, phải tự `git branch -d`.
+- `git log --oneline --graph`: vẽ lịch sử thành hình, thấy rõ chỗ nhánh tách ra và nhập lại.
+
+### Merge conflict
+- Xảy ra khi 2 nhánh sửa **cùng một dòng** theo 2 cách khác nhau. Git không biết giữ bản nào nên dừng lại và hỏi. Đây không phải lỗi, là chuyện hằng ngày.
+- Chỗ nào chỉ một nhánh sửa thì Git tự gộp được. Conflict chỉ nằm đúng ở dòng cả hai cùng sửa.
+- Git ghi cả 2 bản vào file:
+```
+<<<<<<< HEAD
+    bản của nhánh đang đứng
+=======
+    bản của nhánh đang gộp vào
+>>>>>>> lesson-7-update
+```
+- Giải quyết: sửa thành bản cuối cùng mình muốn, **xóa hết 3 dòng marker**, `git add <file>` (báo đã giải quyết xong), rồi `git commit`.
+- Quên xóa marker thì file Python bị lỗi cú pháp. Kiểm tra lại bằng cách tìm `<<<<`.
+- `UU` trong `git status --short` là đang có conflict (Unmerged). Prompt hiện `(MERGING)` cho tới khi commit xong.
+- Tạo nhánh mới khi có thay đổi chưa commit: thay đổi đi theo sang nhánh mới, `main` không bị ảnh hưởng.
+- `⇡` trong prompt: có commit chưa push.
+
 ### Hoàn tác
 - Sửa file `a` rồi `git restore a` thì **mất hết** thay đổi, file quay về bản đã lưu trong Git. Không giống Ctrl+Z: nó bỏ tất cả một lần, và không hoàn tác được.
 - Đã `git add a` rồi `git restore --staged a` thì **hủy add**, thay đổi vẫn còn nguyên trong file.
@@ -308,6 +335,13 @@ with psycopg.connect("postgresql://noteuser@localhost:5432/notesdb", row_factory
 - `INSERT ... RETURNING *`: thêm xong trả lại luôn dòng vừa tạo, kèm id do `nextval` cấp. Không cần `global next_id`.
 - Nhiều `%s` được điền lần lượt theo thứ tự trong tuple: `(payload.title, payload.content)`.
 - `DELETE`: đọc `.rowcount`. Bằng 0 thì `raise HTTPException(404)`.
+
+### PUT (sửa)
+- **PUT** là thay thế **toàn bộ** một resource. Client gửi đủ mọi field, nên body dùng lại `NoteCreate`.
+- Id nằm trên URL (sửa note nào), body chỉ chứa nội dung mới.
+- `UPDATE notes SET (title, content) = (%s, %s) WHERE id = %s RETURNING *`: gán nhiều cột cùng lúc.
+- Dùng `RETURNING *` + `.fetchone()` thì không cần `rowcount`: không có dòng nào khớp thì `fetchone()` trả `None`, nên trả 404.
+- **Bug đã gặp:** `(payload.title, payload.title, note_id)` nên `content` bị ghi đè bằng title. Không lỗi, vẫn 200, chỉ là lưu sai. Phải đọc **nội dung** response, không chỉ nhìn status code.
 
 ### Transaction
 - PostgreSQL giữ thay đổi trong một **transaction**, chỉ lưu vĩnh viễn khi **commit**.
