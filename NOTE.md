@@ -259,6 +259,48 @@ DELETE FROM notes WHERE id = 2;
 | **U**pdate: sửa | *(chưa có)* | `UPDATE ... WHERE` |
 | **D**elete: xóa | `DELETE /notes/{id}` | `DELETE ... WHERE` |
 
+## Python nói chuyện với PostgreSQL
+
+### Driver: psycopg
+- Python không tự biết nói chuyện với PostgreSQL. **Driver** là người phiên dịch: gửi câu SQL đi, rồi đổi kết quả thành dữ liệu Python.
+- Cài: `pip install "psycopg[binary]"`. `[binary]` là bản biên dịch sẵn, kéo theo gói `psycopg-binary`.
+- `pip freeze` sắp tên gói theo chữ cái, nên gói mới có thể nằm giữa `requirements.txt`.
+
+### Venv: tạo khác bật
+- **Tạo** (`python -m venv .venv`): một lần duy nhất cho mỗi project.
+- **Bật** (`source .venv/bin/activate`): mỗi lần mở terminal mới.
+- Quên thì chỉ **bật** lại, đừng tạo thêm, không lại ra `.venv-1`.
+
+### Connection string
+```
+postgresql://noteuser@localhost:5432/notesdb
+   loại       user      máy     port    db
+```
+- Cùng thông tin với `psql -h localhost -U noteuser -d notesdb`, viết gọn trong một dòng.
+
+### Kết nối và truy vấn
+```python
+import psycopg
+from psycopg.rows import dict_row
+
+with psycopg.connect("postgresql://noteuser@localhost:5432/notesdb", row_factory=dict_row) as conn:
+    rows = conn.execute("SELECT * FROM notes").fetchall()
+    note = conn.execute("SELECT * FROM notes WHERE id = %s", (4,)).fetchone()
+```
+- `with ... as conn`: **context manager**, tự đóng kết nối khi xong, kể cả khi bị lỗi giữa chừng.
+- Mặc định mỗi dòng là một **tuple** `(1, 'Hoc SQL', 'Bai 1')`: có giá trị nhưng không có tên cột, dễ đọc nhầm cột.
+- `row_factory=dict_row`: mỗi dòng là một **dict**, dùng tên cột làm key.
+- `.fetchall()`: list tất cả các dòng. `.fetchone()`: một dòng, hoặc **`None`** nếu không có.
+- `rows[0]["title"]`: `[0]` chọn phần tử trong list (đếm từ 0), `["title"]` chọn key trong dict. Mỗi lớp dữ liệu một cặp ngoặc vuông.
+- `rows[0]` là dòng **đứng đầu** kết quả, không phải dòng có id 1. Muốn tìm theo id thì để database lọc bằng `WHERE`.
+- `None` từ `.fetchone()` là lúc code Python trả 404.
+
+### ⚠️ SQL injection
+- **SAI:** `conn.execute(f"SELECT * FROM notes WHERE id = {note_id}")`. Người dùng gửi `1; DELETE FROM notes` là bảng bị xóa sạch, vì chuỗi của họ bị ghép vào và chạy như lệnh.
+- **ĐÚNG:** `conn.execute("SELECT * FROM notes WHERE id = %s", (note_id,))`. Câu SQL và giá trị được gửi **riêng**, nên giá trị luôn chỉ là dữ liệu, không bao giờ bị chạy.
+- Quy tắc: **không bao giờ** dùng f-string hay `+` để ghép dữ liệu người dùng vào SQL. Luôn dùng `%s`.
+- `(note_id,)`: cần dấu phẩy thì Python mới hiểu đó là tuple.
+
 ## Tự kiểm tra
 Trả lời bằng lời của bạn, không nhìn phần ghi chú ở trên:
 1. Tại sao cần venv?
