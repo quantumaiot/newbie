@@ -399,6 +399,48 @@ settings = Setting()
 ### PR tự cập nhật
 - Push thêm commit lên nhánh đang có PR thì **PR tự cập nhật**, không cần mở PR mới. Đây là cách sửa theo góp ý review.
 
+## Docker
+
+### Vì sao cần
+- Đóng gói chương trình cùng mọi thứ nó cần, chạy giống hệt nhau trên mọi máy có Docker. Giải quyết câu "máy em chạy được mà".
+- Mỗi dự án một container, khác phiên bản cũng không đụng nhau. Đã thấy: PostgreSQL 16.4 (container, port 5433) chạy song song PostgreSQL 18.6 (máy, port 5432).
+
+### Image và container
+| Python | Docker |
+|---|---|
+| `Note`: class, cái khuôn | **Image**: khuôn đóng gói sẵn, chỉ đọc |
+| `note`: object tạo từ khuôn | **Container**: một bản đang chạy, tạo từ image |
+- Một image tạo được nhiều container. Xóa container thì image vẫn còn.
+- `docker images`: liệt kê image. `docker ps`: container **đang chạy**. `docker ps -a`: tất cả, kể cả đã dừng.
+
+### docker run
+```bash
+docker run --name learn-pg -e POSTGRES_PASSWORD=secret -p 5433:5432 -v learn-pg-data:/var/lib/postgresql/data -d postgres:16.4-alpine
+```
+- `--name`: tên container. `-e`: biến môi trường. `-d`: chạy nền.
+- `-p máy:container`: nối port. PostgreSQL trong container luôn ở 5432, trên máy truy cập qua 5433 vì 5432 đã có PostgreSQL của máy.
+- `-v tên_volume:thư_mục_trong_container`: cắm volume.
+- `docker run` = **tạo** + **khởi động**. Khởi động lỗi thì container vẫn được tạo và giữ tên. Phải `docker rm` rồi mới chạy lại cùng tên được.
+- Port và biến môi trường **không sửa được** sau khi tạo. Muốn đổi: `docker rm -f` rồi `docker run` lại.
+- `docker rm -f`: dừng rồi xóa luôn.
+- `POSTGRES_PASSWORD` chỉ có tác dụng **lần đầu** khởi tạo database. Có volume cũ thì đổi biến không đổi được mật khẩu.
+
+### Debug container
+- `docker logs <tên>`: log của container, giống `journalctl`.
+- `docker inspect <tên>`: toàn bộ cấu hình (biến môi trường, port, volume).
+- **Lỗi đã gặp:**
+  - `name ... is already in use`: container cũ bị lỗi vẫn giữ tên.
+  - `password authentication failed`: gõ nhầm `sercet`. Tìm ra bằng `docker inspect`.
+  - `-p 5433:5422` (sai port trong container) báo `server closed the connection unexpectedly`.
+- Phân biệt: `Connection refused` là **không ai** nghe ở port đó. `server closed the connection` là **có ai đó** nhận, nhưng phía sau không có gì.
+
+### Volume
+- Dữ liệu ghi trong container sẽ mất khi container bị xóa. Container mới là bản sạch.
+- **Volume** là vùng lưu trữ bên ngoài container. Xóa container thì volume vẫn còn. Giống ổ cứng rời: đổi máy, cắm ổ sang là dữ liệu còn nguyên.
+- Image postgres tự tạo **anonymous volume** (tên là chuỗi số dài) nếu không có `-v`. `docker rm` không xóa nó, nên nó nằm lại mồ côi.
+- **Luôn đặt tên volume.** `docker volume ls`: liệt kê. `docker volume prune -a`: dọn volume không được dùng (có hỏi xác nhận).
+- Volume `docker_postgres_data` của anphat mất dữ liệu là vì ta xóa cả volume, không chỉ container.
+
 ## Tự kiểm tra
 Trả lời bằng lời của bạn, không nhìn phần ghi chú ở trên:
 1. Tại sao cần venv?
