@@ -14,6 +14,10 @@ class NoteCreate(BaseModel):
 class Note(NoteCreate):
     id: int
 
+@app.get("/")
+def home():
+    return {"message": "hello from main"}
+
 @app.get("/notes")
 def get_notes() -> list[Note]:
     with psycopg.connect(DB_URL, row_factory=dict_row) as conn:
