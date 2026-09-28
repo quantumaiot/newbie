@@ -356,6 +356,49 @@ with psycopg.connect("postgresql://noteuser@localhost:5432/notesdb", row_factory
 - `HTTPException(...)` thiếu `raise`: chỉ tạo object rồi vứt đi, hàm chạy tiếp và trả 200. Phải `raise` thì mới ném lỗi ra.
 - **Shadowing:** đặt biến cục bộ trùng tên biến ngoài hàm (`notes`) thì biến ngoài bị che. Không sai nhưng dễ nhầm, nên đặt tên khác.
 
+## Cấu hình và secret
+
+### Biến môi trường
+- Cặp `TÊN=giá_trị` nằm **ngoài code**, chương trình nhận từ terminal đã khởi động nó. `$EDITOR` cũng là một biến môi trường.
+- Code chỉ đọc **tên** biến, còn **giá trị** do nơi chạy cung cấp. Cùng một code, mỗi máy một cấu hình.
+- `export DB_URL="..."`: tạo biến, chỉ sống trong terminal đó (giống venv). `unset DB_URL`: xóa biến.
+- Python: `os.environ["DB_URL"]`. Không có thì `KeyError`. `os.environ.get("DB_URL")` thì trả `None`.
+
+### .env và pydantic-settings
+```python
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+class Setting(BaseSettings):
+    db_url: str
+    model_config = SettingsConfigDict(env_file=".env")
+
+settings = Setting()
+```
+- Tự tìm biến `DB_URL` (không phân biệt hoa thường) và kiểm tra kiểu dữ liệu. Giống một Pydantic model, chỉ là dữ liệu đến từ cấu hình.
+- **Biến môi trường thật thắng `.env`.** Server thường đặt biến trực tiếp, không cần file `.env`.
+- `fastapi dev` chỉ tự tải lại khi file `.py` đổi. Sửa `.env` thì phải tắt server rồi chạy lại.
+- Thiếu biến: `Field required`. Biến lạ trong `.env` (ví dụ gõ nhầm `DB_URLL`): `Extra inputs are not permitted`. Nhìn 2 lỗi cạnh nhau là thấy ngay gõ nhầm.
+- **Fail fast:** cấu hình sai thì app không chịu khởi động, và nói rõ sai ở đâu. Tốt hơn nhiều so với chạy lên rồi hỏng lúc nửa đêm.
+
+### .env và .env.example
+| | `.env.example` | `.env` |
+|---|---|---|
+| Commit? | **Có** | **Không bao giờ** |
+| Chứa | Tên biến + giá trị mẫu | Giá trị thật của máy này |
+| Để làm gì | Tài liệu: cần những biến nào | App đọc khi chạy |
+- Người mới clone về: `cp .env.example .env`, rồi sửa giá trị.
+- Thêm biến vào `Setting` thì **luôn** thêm vào `.env.example`.
+- `.gitignore` ghi `.env` thì chỉ khớp đúng tên `.env`, không chặn `.env.example`.
+- **Lỗi đã gặp:** commit `.env.example` rỗng (0 byte). Kiểm tra nội dung bằng `cat` trước khi commit.
+
+### Secret đã push là secret đã lộ
+- Xóa secret khỏi code **không xóa khỏi lịch sử Git**. `git show <commit>:<file>` xem được file ở mọi thời điểm cũ.
+- Lỡ push mật khẩu thật thì **đổi mật khẩu ngay** (rotate). Đừng cố xóa commit để giấu: người khác có thể đã kéo về, và bot quét GitHub có thể đã thấy.
+- Vì vậy dùng `.env` ngay từ đầu, trước khi có secret thật.
+
+### PR tự cập nhật
+- Push thêm commit lên nhánh đang có PR thì **PR tự cập nhật**, không cần mở PR mới. Đây là cách sửa theo góp ý review.
+
 ## Tự kiểm tra
 Trả lời bằng lời của bạn, không nhìn phần ghi chú ở trên:
 1. Tại sao cần venv?
